@@ -1,8 +1,10 @@
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BookingRequest {
+public class BookingRequest implements Serializable {
+    private static final long serialVersionUID = 1L;
     private static int nextRequestId = 1;
 
     private final String requestId;

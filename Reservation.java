@@ -1,6 +1,8 @@
+import java.io.Serializable;
 import java.util.List;
 
-public class Reservation {
+public class Reservation implements Serializable {
+    private static final long serialVersionUID = 1L;
     private final String reservationId;
     private final BookingRequest bookingRequest;
     private final Room allocatedRoom;
