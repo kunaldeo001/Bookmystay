@@ -2,7 +2,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Room {
+import java.io.Serializable;
+
+public class Room implements Serializable {
+    private static final long serialVersionUID = 1L;
     private final int roomNumber;
     private final RoomType roomType;
     private final List<StayPeriod> reservations;
@@ -37,6 +40,12 @@ public class Room {
         }
         reservations.add(new StayPeriod(checkInDate, checkOutDate));
         return true;
+    }
+
+    public void release(LocalDate checkInDate, LocalDate checkOutDate) {
+        reservations.removeIf(period ->
+            period.getCheckInDate().equals(checkInDate) &&
+            period.getCheckOutDate().equals(checkOutDate));
     }
 
     @Override

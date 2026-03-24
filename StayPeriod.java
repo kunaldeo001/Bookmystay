@@ -1,6 +1,9 @@
 import java.time.LocalDate;
 
-public class StayPeriod {
+import java.io.Serializable;
+
+public class StayPeriod implements Serializable {
+    private static final long serialVersionUID = 1L;
     private final LocalDate checkInDate;
     private final LocalDate checkOutDate;
 

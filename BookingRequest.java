@@ -1,4 +1,6 @@
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BookingRequest {
     private static int nextRequestId = 1;
@@ -9,19 +11,22 @@ public class BookingRequest {
     private final LocalDate checkInDate;
     private final LocalDate checkOutDate;
     private final boolean serviceable;
+    private final List<AddOnService> selectedAddOns;
 
     public BookingRequest(
             String guestName,
             RoomType requestedRoomType,
             LocalDate checkInDate,
             LocalDate checkOutDate,
-            boolean serviceable) {
+            boolean serviceable,
+            List<AddOnService> selectedAddOns) {
         this.requestId = "REQ-" + nextRequestId++;
         this.guestName = guestName;
         this.requestedRoomType = requestedRoomType;
         this.checkInDate = checkInDate;
         this.checkOutDate = checkOutDate;
         this.serviceable = serviceable;
+        this.selectedAddOns = selectedAddOns != null ? new ArrayList<>(selectedAddOns) : new ArrayList<>();
     }
 
     public String getRequestId() {
@@ -48,12 +53,17 @@ public class BookingRequest {
         return serviceable;
     }
 
+    public List<AddOnService> getSelectedAddOns() {
+        return new ArrayList<>(selectedAddOns);
+    }
+
     @Override
     public String toString() {
         return requestId
                 + " | Guest: " + guestName
                 + " | Room Type: " + requestedRoomType.getDisplayName()
                 + " | Stay: " + checkInDate + " to " + checkOutDate
-                + " | Serviceable: " + serviceable;
+                + " | Serviceable: " + serviceable
+                + " | Add-Ons: " + selectedAddOns;
     }
 }

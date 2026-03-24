@@ -1,17 +1,18 @@
+import java.io.*;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class HotelBookingSystem {
+public class HotelBookingSystem implements java.io.Serializable {
+    private static final long serialVersionUID = 1L;
     private final String hotelName;
     private final Map<RoomType, List<Room>> roomsByType;
+    private final List<Reservation> reservationHistory;
     private int nextReservationId;
 
     public HotelBookingSystem(String hotelName) {
         this.hotelName = hotelName;
         this.roomsByType = new EnumMap<>(RoomType.class);
+        this.reservationHistory = new ArrayList<>();
         this.nextReservationId = 1;
         for (RoomType roomType : RoomType.values()) {
             roomsByType.put(roomType, new ArrayList<>());
@@ -61,11 +62,34 @@ public class HotelBookingSystem {
             RoomType roomType,
             LocalDate checkInDate,
             LocalDate checkOutDate) {
-        boolean serviceable = getAvailableRoomCount(roomType, checkInDate, checkOutDate) > 0;
-        return new BookingRequest(guestName, roomType, checkInDate, checkOutDate, serviceable);
+        return createBookingRequest(guestName, roomType, checkInDate, checkOutDate, new ArrayList<>());
     }
 
-    public Reservation confirmReservation(BookingRequest bookingRequest) {
+    public BookingRequest createBookingRequest(
+            String guestName,
+            RoomType roomType,
+            LocalDate checkInDate,
+            LocalDate checkOutDate,
+            List<AddOnService> selectedAddOns) {
+        
+        if (guestName == null || guestName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Guest name cannot be empty");
+        }
+        if (checkInDate == null || checkOutDate == null) {
+            throw new IllegalArgumentException("Dates cannot be null");
+        }
+        if (!checkOutDate.isAfter(checkInDate)) {
+            throw new IllegalArgumentException("Check-out date must be after check-in date");
+        }
+        if (checkInDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Check-in date cannot be in the past");
+        }
+
+        boolean serviceable = getAvailableRoomCount(roomType, checkInDate, checkOutDate) > 0;
+        return new BookingRequest(guestName, roomType, checkInDate, checkOutDate, serviceable, selectedAddOns);
+    }
+
+    public synchronized Reservation confirmReservation(BookingRequest bookingRequest) {
         List<Room> availableRooms = searchAvailableRooms(
                 bookingRequest.getRequestedRoomType(),
                 bookingRequest.getCheckInDate(),
@@ -82,10 +106,74 @@ public class HotelBookingSystem {
         Room allocatedRoom = availableRooms.get(0);
         allocatedRoom.reserve(bookingRequest.getCheckInDate(), bookingRequest.getCheckOutDate());
 
-        return new Reservation(
+        Reservation reservation = new Reservation(
                 "RES-" + nextReservationId++,
                 bookingRequest,
                 allocatedRoom,
                 "CONFIRMED");
+
+        reservationHistory.add(reservation);
+        return reservation;
+    }
+
+    public boolean cancelReservation(String reservationId) {
+        for (Reservation res : reservationHistory) {
+            if (res.getReservationId().equals(reservationId) && "CONFIRMED".equals(res.getStatus())) {
+                Room room = res.getAllocatedRoom();
+                if (room != null) {
+                    room.release(res.getBookingRequest().getCheckInDate(), res.getBookingRequest().getCheckOutDate());
+                }
+                res.setStatus("CANCELLED");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<Reservation> getReservationHistory() {
+        return new ArrayList<>(reservationHistory);
+    }
+
+    public void generateReportingSummary() {
+        System.out.println("--- Reporting Summary ---");
+        System.out.println("Total Reservations: " + reservationHistory.size());
+        long confirmedCount = reservationHistory.stream()
+                .filter(r -> "CONFIRMED".equals(r.getStatus()))
+                .count();
+        System.out.println("Confirmed Reservations: " + confirmedCount);
+
+        double totalRevenue = reservationHistory.stream()
+                .filter(r -> "CONFIRMED".equals(r.getStatus()))
+                .mapToDouble(r -> {
+                    double roomPrice = r.getBookingRequest().getRequestedRoomType().getBasePrice();
+                    long days = java.time.temporal.ChronoUnit.DAYS.between(
+                            r.getBookingRequest().getCheckInDate(),
+                            r.getBookingRequest().getCheckOutDate());
+                    double addOnsPrice = r.getBookingRequest().getSelectedAddOns().stream()
+                            .mapToDouble(AddOnService::getPrice)
+                            .sum();
+                    return (roomPrice * days) + addOnsPrice;
+                })
+                .sum();
+        System.out.println("Estimated Total Revenue: ₹" + totalRevenue);
+        System.out.println("-------------------------");
+    }
+
+    public void saveSystemState(String filename) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
+            oos.writeObject(this);
+            System.out.println("System state saved to " + filename);
+        } catch (IOException e) {
+            System.err.println("Error saving state: " + e.getMessage());
+        }
+    }
+
+    public static HotelBookingSystem loadSystemState(String filename) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
+            return (HotelBookingSystem) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error loading state: " + e.getMessage());
+            return null;
+        }
     }
 }

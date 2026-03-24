@@ -1,14 +1,18 @@
+import java.util.List;
+
 public class Reservation {
     private final String reservationId;
     private final BookingRequest bookingRequest;
     private final Room allocatedRoom;
-    private final String status;
+    private String status;
+    private final List<AddOnService> selectedAddOns;
 
     public Reservation(String reservationId, BookingRequest bookingRequest, Room allocatedRoom, String status) {
         this.reservationId = reservationId;
         this.bookingRequest = bookingRequest;
         this.allocatedRoom = allocatedRoom;
         this.status = status;
+        this.selectedAddOns = bookingRequest.getSelectedAddOns();
     }
 
     public String getReservationId() {
@@ -27,12 +31,17 @@ public class Reservation {
         return status;
     }
 
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         String roomDetails = allocatedRoom == null ? "No room allocated" : allocatedRoom.toString();
         return reservationId
                 + " | Guest: " + bookingRequest.getGuestName()
                 + " | Status: " + status
-                + " | " + roomDetails;
+                + " | " + roomDetails
+                + " | Add-Ons: " + selectedAddOns;
     }
 }
